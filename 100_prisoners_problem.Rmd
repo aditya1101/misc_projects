@@ -8,13 +8,14 @@ output: html_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(pbmcapply)
+library(ggplot2)
 ```
 
 ```{r}
 loop_search <- function(prisoner_num, start, box_layout){
   curr_search = start
-  found_numbers = rep(0,50)
-  searched_indices = rep(0,50)
+  # found_numbers = rep(0,50)
+  searched_indices = vector("numeric")
   for(i in 1:50){
     curr_box_num = box_layout[curr_search]
     
@@ -22,12 +23,12 @@ loop_search <- function(prisoner_num, start, box_layout){
       return(TRUE)
     }
     
-    found_numbers[i] = curr_box_num
-    searched_indices[i] = curr_search
+    # found_numbers[i] = curr_box_num
+    searched_indices = c(searched_indices,curr_search)
     curr_search = curr_box_num
     if(curr_search %in% searched_indices){
-      all_previous_searches = searched_indices[1:i]
-      unsearched_indices = (1:100)[!(1:100) %in% all_previous_searches]
+      # all_previous_searches = searched_indices[1:i]
+      unsearched_indices = (1:100)[!(1:100) %in% searched_indices]
       curr_search = sample(unsearched_indices,1)
     }
   }
@@ -45,38 +46,38 @@ for(prisoner in 1:100){
 ```
 
 ```{r}
-n_simulations = 100000
-results_vec_startwithprisonernum = vector()
-for(i in 1:n_simulations){
-  box_layout = sample(1:100,100,replace=F)
-  my_prisoner = sample(1:100,1)
-  results_vec_startwithprisonernum = append(results_vec_startwithprisonernum,loop_search(prisoner_num = prisoner, start=prisoner, box_layout=box_layout))
-}
-
-results_vec_startwithrandomnum = vector()
-for(i in 1:n_simulations){
-  box_layout = sample(1:100,100,replace=F)
-  my_prisoner = sample(1:100,1)
-  start_num = sample(1:100,1)
-  results_vec_startwithrandomnum = append(results_vec_startwithrandomnum,loop_search(prisoner_num = prisoner, start=start_num, box_layout=box_layout))
-}
+# n_simulations = 100000
+# results_vec_startwithprisonernum = vector()
+# for(i in 1:n_simulations){
+#   box_layout = sample(1:100,100,replace=F)
+#   my_prisoner = sample(1:100,1)
+#   results_vec_startwithprisonernum = append(results_vec_startwithprisonernum,loop_search(prisoner_num = prisoner, start=prisoner, box_layout=box_layout))
+# }
+# 
+# results_vec_startwithrandomnum = vector()
+# for(i in 1:n_simulations){
+#   box_layout = sample(1:100,100,replace=F)
+#   my_prisoner = sample(1:100,1)
+#   start_num = sample(1:100,1)
+#   results_vec_startwithrandomnum = append(results_vec_startwithrandomnum,loop_search(prisoner_num = prisoner, start=start_num, box_layout=box_layout))
+# }
 ```
 
 ```{r}
-n_simulations = 1000000
+n_simulations = 10000000 #10 million
 
 results_vec_startwithprisonernum = pbmclapply(1:n_simulations, function(x){
   box_layout = sample(1:100,100,replace=F)
   my_prisoner = sample(1:100,1)
   return(loop_search(prisoner_num = prisoner, start=prisoner, box_layout=box_layout))
-},mc.cores=8)
+},mc.cores=12)
 
 results_vec_startwithrandomnum = pbmclapply(1:n_simulations, function(x){
   box_layout = sample(1:100,100,replace=F)
   my_prisoner = sample(1:100,1)
   start_num = sample(1:100,1)
   return(loop_search(prisoner_num = prisoner, start=start_num, box_layout=box_layout))
-},mc.cores=8)
+},mc.cores=12)
 
 ```
 
@@ -85,6 +86,75 @@ cat(100*sum(unlist(results_vec_startwithprisonernum))/length(results_vec_startwi
 cat("\n")
 cat(100*sum(unlist(results_vec_startwithrandomnum))/length(results_vec_startwithrandomnum))
 ```
+
+
+Checking the distribtuion of the number of searches
+```{r}
+loop_search_numsearches <- function(prisoner_num, start, box_layout){
+  curr_search = start
+  searched_indices = vector("numeric")
+  for(i in 1:50){
+    curr_box_num = box_layout[curr_search]
+    
+    if(curr_box_num == prisoner_num){
+      # return(c(TRUE,len(searched_indices+1)))
+      return(i)
+    }
+    
+    searched_indices = c(searched_indices,curr_search)
+    curr_search = curr_box_num
+    if(curr_search %in% searched_indices){
+      unsearched_indices = (1:100)[!(1:100) %in% searched_indices]
+      curr_search = sample(unsearched_indices,1)
+    }
+  }
+  # return(c(FALSE,50))
+  return(50)
+}
+```
+
+
+```{r}
+n_simulations = 1000000 #1 million
+
+numsearch_vec_startwithprisonernum = pbmclapply(1:n_simulations, function(x){
+  box_layout = sample(1:100,100,replace=F)
+  my_prisoner = sample(1:100,1)
+  return(loop_search_numsearches(prisoner_num = prisoner, start=prisoner, box_layout=box_layout))
+},mc.cores=8)
+
+numsearch_vec_startwithrandomnum = pbmclapply(1:n_simulations, function(x){
+  box_layout = sample(1:100,100,replace=F)
+  my_prisoner = sample(1:100,1)
+  start_num = sample(1:100,1)
+  return(loop_search_numsearches(prisoner_num = prisoner, start=start_num, box_layout=box_layout))
+},mc.cores=8)
+
+```
+
+```{r}
+cat(sprintf("Correct strategy: mean = %s, sd = %s",mean(unlist(numsearch_vec_startwithprisonernum)),sd(unlist(numsearch_vec_startwithprisonernum)) ))
+cat("\n")
+cat(sprintf("Inorrect strategy: mean = %s, sd = %s",mean(unlist(numsearch_vec_startwithrandomnum)),sd(unlist(numsearch_vec_startwithrandomnum)) ))
+```
+
+
+```{r}
+plotdata1 = data.frame(num_searches = unlist(numsearch_vec_startwithprisonernum), strategy = "Correct loop")
+plotdata2 = data.frame(num_searches = unlist(numsearch_vec_startwithrandomnum), strategy = "Incorrect loop")
+plotdata = rbind(plotdata1,plotdata2)
+
+ggplot(plotdata, aes(x=num_searches, fill=strategy)) + geom_density(alpha=0.4)
+
+```
+
+
+
+
+
+
+
+
 
 
 
