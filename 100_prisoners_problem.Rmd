@@ -1,0 +1,92 @@
+---
+title: "100_prisoner_problem"
+author: "Aditya Rao"
+date: "2022-10-22"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(pbmcapply)
+```
+
+```{r}
+loop_search <- function(prisoner_num, start, box_layout){
+  curr_search = start
+  found_numbers = rep(0,50)
+  searched_indices = rep(0,50)
+  for(i in 1:50){
+    curr_box_num = box_layout[curr_search]
+    
+    if(curr_box_num == prisoner_num){
+      return(TRUE)
+    }
+    
+    found_numbers[i] = curr_box_num
+    searched_indices[i] = curr_search
+    curr_search = curr_box_num
+    if(curr_search %in% searched_indices){
+      all_previous_searches = searched_indices[1:i]
+      unsearched_indices = (1:100)[!(1:100) %in% all_previous_searches]
+      curr_search = sample(unsearched_indices,1)
+    }
+  }
+  return(FALSE)
+}
+```
+
+
+```{r}
+box_layout = sample(1:100,100,replace=F)
+results_vec = vector()
+for(prisoner in 1:100){
+  results_vec = append(results_vec,loop_search(prisoner_num = prisoner, start=prisoner, box_layout=box_layout))
+}
+```
+
+```{r}
+n_simulations = 100000
+results_vec_startwithprisonernum = vector()
+for(i in 1:n_simulations){
+  box_layout = sample(1:100,100,replace=F)
+  my_prisoner = sample(1:100,1)
+  results_vec_startwithprisonernum = append(results_vec_startwithprisonernum,loop_search(prisoner_num = prisoner, start=prisoner, box_layout=box_layout))
+}
+
+results_vec_startwithrandomnum = vector()
+for(i in 1:n_simulations){
+  box_layout = sample(1:100,100,replace=F)
+  my_prisoner = sample(1:100,1)
+  start_num = sample(1:100,1)
+  results_vec_startwithrandomnum = append(results_vec_startwithrandomnum,loop_search(prisoner_num = prisoner, start=start_num, box_layout=box_layout))
+}
+```
+
+```{r}
+n_simulations = 1000000
+
+results_vec_startwithprisonernum = pbmclapply(1:n_simulations, function(x){
+  box_layout = sample(1:100,100,replace=F)
+  my_prisoner = sample(1:100,1)
+  return(loop_search(prisoner_num = prisoner, start=prisoner, box_layout=box_layout))
+},mc.cores=8)
+
+results_vec_startwithrandomnum = pbmclapply(1:n_simulations, function(x){
+  box_layout = sample(1:100,100,replace=F)
+  my_prisoner = sample(1:100,1)
+  start_num = sample(1:100,1)
+  return(loop_search(prisoner_num = prisoner, start=start_num, box_layout=box_layout))
+},mc.cores=8)
+
+```
+
+```{r}
+cat(100*sum(unlist(results_vec_startwithprisonernum))/length(results_vec_startwithprisonernum))
+cat("\n")
+cat(100*sum(unlist(results_vec_startwithrandomnum))/length(results_vec_startwithrandomnum))
+```
+
+
+
+
+
