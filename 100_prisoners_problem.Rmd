@@ -152,6 +152,69 @@ ggplot(plotdata, aes(x=num_searches, fill=strategy)) + geom_density(alpha=0.4)
 
 
 
+Checking the distribtuion of the number of searches, when you can search all 100 boxes
+```{r}
+loop_search_numsearches_100 <- function(prisoner_num, start, box_layout){
+  curr_search = start
+  searched_indices = vector("numeric")
+  for(i in 1:100){
+    curr_box_num = box_layout[curr_search]
+    
+    if(curr_box_num == prisoner_num){
+      # return(c(TRUE,len(searched_indices+1)))
+      return(i)
+    }
+    
+    searched_indices = c(searched_indices,curr_search)
+    curr_search = curr_box_num
+    if(curr_search %in% searched_indices){
+      unsearched_indices = (1:100)[!(1:100) %in% searched_indices]
+      curr_search = sample(unsearched_indices,1)
+    }
+  }
+  # return(c(FALSE,50))
+  return(100)
+}
+```
+
+
+```{r}
+n_simulations = 1000000 #1 million
+
+numsearch_100_vec_startwithprisonernum = pbmclapply(1:n_simulations, function(x){
+  box_layout = sample(1:100,100,replace=F)
+  my_prisoner = sample(1:100,1)
+  return(loop_search_numsearches_100(prisoner_num = prisoner, start=prisoner, box_layout=box_layout))
+},mc.cores=8)
+
+numsearch_100_vec_startwithrandomnum = pbmclapply(1:n_simulations, function(x){
+  box_layout = sample(1:100,100,replace=F)
+  my_prisoner = sample(1:100,1)
+  start_num = sample(1:100,1)
+  return(loop_search_numsearches_100(prisoner_num = prisoner, start=start_num, box_layout=box_layout))
+},mc.cores=8)
+
+```
+
+```{r}
+cat(sprintf("Correct strategy: mean = %s, sd = %s",mean(unlist(numsearch_100_vec_startwithprisonernum)),sd(unlist(numsearch_100_vec_startwithprisonernum)) ))
+cat("\n")
+cat(sprintf("Inorrect strategy: mean = %s, sd = %s",mean(unlist(numsearch_100_vec_startwithrandomnum)),sd(unlist(numsearch_100_vec_startwithrandomnum)) ))
+```
+
+
+```{r}
+plotdata1 = data.frame(num_searches = unlist(numsearch_100_vec_startwithprisonernum), strategy = "Correct loop")
+plotdata2 = data.frame(num_searches = unlist(numsearch_100_vec_startwithrandomnum), strategy = "Incorrect loop")
+plotdata = rbind(plotdata1,plotdata2)
+
+ggplot(plotdata, aes(x=num_searches, fill=strategy)) + geom_density(alpha=0.4)
+
+```
+
+
+
+
 
 
 
